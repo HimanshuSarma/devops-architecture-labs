@@ -1,4 +1,52 @@
-## Architecture Diagram
+# AWS Transit Gateway Hub-and-Spoke Architecture Lab
+
+---
+
+## 📄 Project Overview & Purpose
+
+> ### **System Purpose**
+> **Core Objective:** A hands-on enterprise cloud networking lab demonstrating centralized multi-VPC interconnection using **AWS Transit Gateway (TGW)**. The project eliminates the complexity and management overhead of full-mesh VPC peering by establishing a scalable **Hub-and-Spoke architecture** with optimized **supernet routing (`10.0.0.0/8`)** across multiple isolated Virtual Private Clouds in `us-east-1`.
+
+---
+
+## ⚡ Core Architecture & Key Features
+
+* **Centralized Hub-and-Spoke Topology**  
+  Replaces $N(N-1)/2$ complex, individual VPC peering connections with a single **AWS Transit Gateway** acting as a high-throughput cloud router connecting **VPC A**, **VPC B**, and **VPC C**.
+
+* **Supernet CIDR Aggregation (`10.0.0.0/8`)**  
+  Utilizes classless inter-domain routing (CIDR) supernetting to streamline route tables across all spokes. A single `10.0.0.0/8` target route entry directs all inter-VPC traffic to the Transit Gateway without requiring individual `/16` static routes.
+
+* **Standardized Security Baselines**  
+  Enforces uniform Security Group rules across compute targets (`EC2 INSTANCE A`, `B`, and `C`) allowing inbound administrative (SSH `22`) and web traffic (HTTP `80`, HTTPS `443`).
+
+* **Direct Internet Ingress / Egress**  
+  Equips each VPC with an **Internet Gateway (IGW)** to enable direct external access and software updates while routing internal cross-VPC communication exclusively over the private AWS backbone via TGW.
+
+---
+
+## 🏗️ Network & Routing Matrix
+
+| VPC Name | CIDR Block | Deployed Compute Target | Security Group Ingress | Transit Gateway Route Target |
+| :--- | :--- | :--- | :--- | :--- |
+| **VPC A** | `10.0.0.0/16` | `EC2 INSTANCE A` | Ports `22` (SSH), `80` (HTTP), `443` (HTTPS) | `10.0.0.0/8` $\rightarrow$ `TGW` |
+| **VPC B** | `10.1.0.0/16` | `EC2 INSTANCE B` | Ports `22` (SSH), `80` (HTTP), `443` (HTTPS) | `10.0.0.0/8` $\rightarrow$ `TGW` |
+| **VPC C** | `10.2.0.0/16` | `EC2 INSTANCE C` | Ports `22` (SSH), `80` (HTTP), `443` (HTTPS) | `10.0.0.0/8` $\rightarrow$ `TGW` |
+
+---
+
+## 🔄 Traffic & Routing Flow
+
+1. **Intra-VPC Traffic:** Local communication within `VPC A` (`10.0.0.0/16`) is routed locally by the VPC default route table.
+2. **Cross-VPC Communication:**
+   * `EC2 INSTANCE A` (`10.0.x.x`) initiates a connection to `EC2 INSTANCE B` (`10.1.x.x`).
+   * The subnet route table matches the `10.0.0.0/8` supernet rule and forwards the packet to the local **TGW Attachment**.
+   * **Transit Gateway** inspects its central route table and forwards the packet to `VPC B`'s attachment.
+3. **Internet Access:** External web traffic enters and exits each spoke VPC directly via its dedicated **Internet Gateway (IGW)**.
+
+---
+
+## 📐 System Architecture Diagram
 
 ```mermaid
 graph TD
