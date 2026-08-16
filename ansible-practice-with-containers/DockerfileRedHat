@@ -1,0 +1,42 @@
+FROM registry.access.redhat.com/ubi9/ubi:latest
+
+# Install SSH server, Python3, and sudo using DNF
+RUN dnf update -y && dnf install -y \
+    openssh-server \
+    python3 \
+    sudo \
+    && dnf clean all
+
+# Generate the host keys required by the RHEL SSH daemon to start
+RUN ssh-keygen -A
+
+# Configure SSH daemon
+RUN mkdir -p /var/run/sshd
+
+# 1. FIX: Explicitly enforce Password Authentication
+RUN sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+# 2. FIX: Handle PAM restriction for RHEL environments
+RUN sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd
+
+# Create a 'rhel_user' user with password 'password' and give sudo permissions via the 'wheel' group
+# Note: RHEL uses the 'wheel' group for administrative sudo privileges, whereas Ubuntu uses 'sudo'.
+RUN useradd -rm -d /home/rhel_user -s /bin/bash -G wheel -u 1000 rhel_user
+RUN echo 'rhel_user:password' | chpasswd
+
+# 1. Write the rule into a dedicated separate file
+RUN echo '%wheel ALL=(ALL) NOPASSWD: ALL' > /tmp/wheel_rule && \
+    # 2. Validate just this specific file to ensure perfect syntax
+    /usr/sbin/visudo -cf /tmp/wheel_rule && \
+    # 3. Securely move it to the drop-in directory with correct permissions (0440)
+    mv /tmp/wheel_rule /etc/sudoers.d/wheel_rule && \
+    chmod 0440 /etc/sudoers.d/wheel_rule
+
+# Set up SSH directory for the user
+RUN mkdir -p /home/rhel_user/.ssh && chown rhel_user:root /home/rhel_user/.ssh
+
+# Expose SSH port
+EXPOSE 22
+
+# Start SSH service when container starts
+CMD ["/usr/sbin/sshd", "-D"]

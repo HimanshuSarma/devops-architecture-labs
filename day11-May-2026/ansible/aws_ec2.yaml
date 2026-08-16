@@ -1,0 +1,14 @@
+plugin: amazon.aws.aws_ec2
+regions:
+  - us-east-1
+
+groups:
+  # This creates the group 'backend_servers' for any instance 
+  # with 'Backend-Server' in its Name tag
+  backend_servers: "'Backend-Server' in tags.Name"
+
+compose:
+  ansible_host: public_ip_address | default(private_ip_address)
+
+filters:
+  instance-state-name: [running]

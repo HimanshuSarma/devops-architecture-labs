@@ -1,0 +1,116 @@
+---
+- name: Configure Backend Servers and Install Nginx
+  hosts: backend_servers_group1
+  become: true  # This tells Ansible to run tasks with sudo privileges
+  force_handlers: yes
+
+  tasks:
+    - name: Update apt cache (apt-get update)
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600  # Only updates if it hasn't been run in the last hour
+
+    - name: Install Nginx web server
+      include_tasks: install_nginx.yaml
+
+    - name: Ensure Nginx is running and enabled on boot
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Check if Node.js binary exists on the system
+      stat:
+        path: /usr/bin/node
+      register: node_binary_check
+
+    - name: Check if npm binary exists on the system
+      stat:
+        path: /usr/bin/npm
+      register: npm_binary_check
+
+    # 2. Step 2: Only run the heavy apt install IF the binary does NOT exist
+    - name: Install NodeJS if missing
+      apt:
+        name: ["nodejs"]
+        state: present
+      when: not node_binary_check.stat.exists # <-- THE CONDITIONAL SYNTAX
+
+    # 2. Step 2: Only run the heavy apt install IF the binary does NOT exist
+    - name: Install NPM if missing
+      apt:
+        name: ["npm"]
+        state: present
+      when: not npm_binary_check.stat.exists # <-- THE CONDITIONAL SYNTAX
+
+    - name: Print the nodejs and npm version
+      shell: node -v && npm -v
+      register: version_output
+
+    - name: Print the version output to terminal
+      debug:
+        var: version_output
+
+    - name: Warning message if NodeJS is an old version
+      debug:
+        msg: "Warning: Your NodeJS and npm is out of date!"
+      when: "'v12' in version_output.stdout and '8.5' in version_output.stdout"  # Only executes if 'v12' is found in the text
+
+    - name: Copy the minimal nodejs script
+      copy:
+        src: customscripts/node-script1.js
+        dest: "{{ ansible_env.HOME }}/node-script1.js"
+        mode: '0755'
+
+    - name: Run the minimal nodejs script
+      command: node "{{ ansible_env.HOME }}/node-script1.js"
+      register: script_output
+
+    - name: Print the minimal script output
+      debug:
+        var: script_output.stdout_lines
+
+    - name: Copy multiple custom files with unique permissions using a loop
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: "{{ item.mode }}"
+        owner: ubuntu
+        group: ubuntu
+      loop:
+        - {
+            src: 'customscripts/node-script1.js',
+            dest: "{{ ansible_env.HOME }}/node-script1.js",
+            mode: '0755'
+          }
+        - {
+            src: 'customscripts/node-script2.js',
+            dest: "{{ ansible_env.HOME }}/node-script2.js",
+            mode: '0755'
+          }
+
+    - name: Run the node scripts and register the output
+      command: node "{{ item.dest }}"
+      register: node_outputs
+      loop:
+        - {
+            dest: "{{ ansible_env.HOME }}/node-script1.js",
+          }
+        - {
+            dest: "{{ ansible_env.HOME }}/node-script2.js",
+          }
+
+    - name: Print the output
+      debug:
+        msg: "Script output was: {{ item.stdout_lines[0] }}"
+      loop: "{{ node_outputs.results }}"
+
+    - name: Update Nginx global config file
+      template:
+        src: 'customscripts/nginx-config.j2'
+        dest: /etc/nginx/sites-available/default
+      notify: Restart Nginx Service
+
+  handlers:
+    - name: Restart Nginx Service
+      include_tasks: restart_nginx.yaml

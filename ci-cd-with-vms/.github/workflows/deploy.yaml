@@ -1,0 +1,73 @@
+name: CI-CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  run-ansible:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ansible
+
+    steps:
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 1. 🟢 Optimized: Cache BOTH site-packages and the execution binary folder
+      # Using a clear version key string 'v1-ansible-modules'.
+      - name: Cache Installed Python Packages
+        id: cache-pip-env
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/lib/python3.10/site-packages
+            ~/.local/bin
+          key: ${{ runner.os }}-python-env-v1-ansible-modules
+
+      # 2. 🟢 This step will be bypassed on push #2
+      - name: Install Ansible & AWS modules via pip
+        if: steps.cache-pip-env.outputs.cache-hit != 'true'
+        run: |
+          pip install --user ansible boto3 botocore
+
+      # 3. Cache the Ansible Galaxy collection folder separately
+      - name: Cache Ansible Galaxy Collections
+        id: cache-galaxy
+        uses: actions/cache@v4
+        with:
+          path: ~/.ansible/collections
+          key: ${{ runner.os }}-ansible-galaxy-v1
+
+      - name: Install Ansible AWS Collection
+        if: steps.cache-galaxy.outputs.cache-hit != 'true'
+        run: |
+          ansible-galaxy collection install amazon.aws:==6.5.0 --force
+          
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # 4. 🟢 Add ~/.local/bin to the runner PATH so it can see the cached ansible commands
+      - name: Add Local Bin to Path
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Set up SSH Key File
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/ec2.pem
+          chmod 600 /tmp/ec2.pem
+
+      - name: Run Ansible Playbook
+        run: |
+          ansible-playbook tag_Name_asg_app_node.yaml

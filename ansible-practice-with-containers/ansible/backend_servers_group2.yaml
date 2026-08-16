@@ -1,0 +1,44 @@
+---
+- name: Configure Backend Servers and Install Nginx
+  hosts: backend_servers_group2
+  become: true  # This tells Ansible to run tasks with sudo privileges
+
+  tasks:
+    - name: Update apt cache (apt-get update)
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600  # Only updates if it hasn't been run in the last hour
+
+    - name: Install Nginx web server
+      apt:
+        name: nginx
+        state: present  # Ensures Nginx is installed
+
+    - name: Ensure Nginx is running and enabled on boot
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Install Python pip
+      apt:
+        name: ["python3-pip"]
+        state: present
+
+    - name: Print the pip version
+      shell: pip -V
+      register: version_output
+
+    - name: Print the version output to terminal
+      debug:
+        var: version_output
+
+    - name: Update Nginx global config file
+      template:
+        src: 'customscripts/nginx-config.j2'
+        dest: /etc/nginx/sites-available/default
+      notify: Restart Nginx Service
+
+  handlers:
+    - name: Restart Nginx Service
+      include_tasks: restart_nginx.yaml

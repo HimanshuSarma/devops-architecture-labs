@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ecommerce-app-ingress
+  namespace: default
+  annotations:
+    # NGINX handles internal rewrites/headers if needed, but SSL offloading lives at the ALB level
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+spec:
+  ingressClassName: nginx # Triggers NGINX to handle the request routing locally
+  rules:
+  - host: ecommerce-app-himanshu324.duckdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ui-svc
+            port:
+              number: 8080

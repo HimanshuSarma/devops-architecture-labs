@@ -1,0 +1,22 @@
+# Config generated automatically by Ansible
+
+server {
+  # 1. Simple Variable Substitution
+  # dummy change4
+  listen {{ app_port }};
+  
+  server_name localhost;
+
+  # 2. Conditional Logic (If/Else)
+  {% if ssl_enabled %}
+  listen 443 ssl;
+  ssl_certificate /etc/nginx/ssl/prod.crt;
+  {% else %}
+  # SSL is disabled for this environment
+  {% endif %}
+
+  location / {
+    root /var/www/html;
+    index index.html index.nginx-debian.html;
+  }
+}

@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  backend-server-0:
+    image: ansible-node
+    container_name: backend-server-0
+    ports:
+      - "2221:22" # Maps local port 2221 to container's SSH port 22
+      - "8080:8080"
+    networks:
+      - ansible-network
+
+  backend-server-1:
+    image: ansible-node
+    container_name: backend-server-1
+    ports:
+      - "2222:22" # Maps local port 2222 to container's SSH port 22
+      - "8081:8080"
+    networks:
+      - ansible-network
+
+  backend-server-2:
+    image: ansible-node
+    container_name: backend-server-2
+    ports:
+      - "2223:22" # Maps local port 2222 to container's SSH port 22
+      - "8082:8080"
+    networks:
+      - ansible-network
+
+  backend-server-3:
+    image: ansible-node
+    container_name: backend-server-3
+    ports:
+      - "2224:22" # Maps local port 2222 to container's SSH port 22
+      - "8083:8080"
+    networks:
+      - ansible-network
+
+networks:
+  ansible-network:
+    driver: bridge

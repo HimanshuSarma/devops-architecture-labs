@@ -1,0 +1,24 @@
+---
+- name: Configure Backend Servers and Install Nginx
+  hosts: tag_Name_asg_app_node
+  become: true  # This tells Ansible to run tasks with sudo privileges
+  force_handlers: yes
+
+  tasks:
+    - name: Update apt cache (apt-get update)
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install Node.js, npm and nginx
+      apt:
+        name: ["nodejs", "npm", "nginx"]
+        state: present
+
+    - name: Print the nodejs and npm version
+      shell: node -v && npm -v
+      register: version_output
+
+    - name: Print the version output to terminal
+      debug:
+        var: version_output

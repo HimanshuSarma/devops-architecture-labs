@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: default-ns-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  ingressClassName: nginx
+  rules:
+  # Removing 'host:' allows NGINX to route ANY incoming domain/IP to your service
+  - http:
+      paths:
+      - path: /api/backend
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-prod-svc
+            port:
+              number: 8000

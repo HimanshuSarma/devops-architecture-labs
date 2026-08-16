@@ -1,0 +1,18 @@
+plugin: amazon.aws.aws_ec2
+regions:
+  - us-east-1
+
+# This automatically groups your instances based on whatever Name tag they have
+keyed_groups:
+  - key: tags.Name
+    prefix: tag_Name
+    separator: "_"
+
+compose:
+  # 🟢 Fixed: This must be wrapped in double quotes and braces to evaluate correctly
+  ansible_host: "{{ public_ip_address | default(private_ip_address) }}"
+
+filters:
+  instance-state-name: [running]
+  # 🟢 Safe filtering: This forces the inventory to ONLY fetch your ASG nodes
+  tag:Name: ["asg-app-node"]

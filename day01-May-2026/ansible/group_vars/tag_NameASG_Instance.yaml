@@ -1,0 +1,9 @@
+# SSH Credentials for the Private Nodes
+ansible_user: ubuntu
+ansible_ssh_private_key_file: ~/.ssh/ec2.pem
+
+# The Tunnel Logic: 
+# Jump through the first host found in the PublicInstance group
+ansible_ssh_common_args: >-
+  -o ProxyCommand="ssh -W %h:%p -q ubuntu@{{ hostvars[groups['tag_NamePublicInstance'][0]]['ansible_host'] }} -i ~/.ssh/ec2.pem"
+  -o StrictHostKeyChecking=no

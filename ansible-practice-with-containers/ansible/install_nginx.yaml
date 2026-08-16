@@ -1,0 +1,13 @@
+- name: Install Nginx web server
+  apt:
+    name: nginx
+    state: present
+
+- name: Print the nginx version
+  shell: nginx -v
+  become: true
+  register: version_output
+
+- name: Print the version output to terminal
+  debug:
+    var: version_output.stderr

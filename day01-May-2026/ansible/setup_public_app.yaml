@@ -1,0 +1,94 @@
+---
+- name: Setup React App on Public Instance
+  hosts: tag_NamePublicInstance
+  become: yes
+  vars:
+    node_version: "20.x"
+    app_path: "/var/www/html/frontend"
+    repo_url: "https://github.com/HimanshuSarma/sample-react-app.git"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Node.js setup script
+      shell: "curl -fsSL https://deb.nodesource.com/setup_{{ node_version }} | bash -"
+      args:
+        creates: /etc/apt/sources.list.d/nodesource.list
+
+    - name: Install Node.js, NPM, Git and nginx
+      apt:
+        name: 
+          - nodejs
+          - git
+          - nginx
+        state: present
+
+    - name: Create the nginx conf file
+      copy:
+        dest: /etc/nginx/conf.d/nginx.conf
+        content: |
+          server {
+            listen 80;
+            server_name 44.215.67.63;
+
+            root /var/www/html/frontend/dist;
+            index index.html;
+
+            location / {
+              try_files $uri /index.html;
+            }
+          }
+
+          server {
+            listen 8000;
+            server_name 44.215.67.63;
+
+            location / {
+              # Add CORS headers for the browser
+              add_header 'Access-Control-Allow-Origin' '*' always;
+              add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+              add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range' always;
+
+              proxy_pass http://internal-app-internal-lb-1610216516.us-east-1.elb.amazonaws.com;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+            }
+          }
+        mode: '0644'
+
+    - name: Restart the nginx server
+      shell: "systemctl restart nginx"
+
+    - name: Create parent directory
+      file:
+        path: "/var/www/html"
+        state: directory
+        mode: '0755'
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Clone the frontend repo
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_path }}"
+        version: HEAD
+        update: yes
+        force: yes
+      become: yes
+      become_user: ubuntu
+
+    - name: Install NPM dependencies
+      npm:
+        path: "{{ app_path }}"
+        state: present
+      become: yes
+      become_user: ubuntu
+
+    - name: Build the React application
+      command: npm run build
+      args:
+        chdir: "{{ app_path }}"
+      become: yes
+      become_user: ubuntu

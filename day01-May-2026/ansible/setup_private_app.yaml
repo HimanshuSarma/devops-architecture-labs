@@ -1,0 +1,66 @@
+---
+- name: Setup the backend server
+  hosts: tag_NameASG_Instance
+  become: yes
+  vars:
+    node_version: "20.x"
+    app_path: "/var/www/html/backend"
+    repo_url: "https://github.com/HimanshuSarma/sample-nodejs-server.git"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Node.js setup script
+      shell: "curl -fsSL https://deb.nodesource.com/setup_{{ node_version }} | bash -"
+      args:
+        creates: /etc/apt/sources.list.d/nodesource.list
+
+    - name: Install Node.js, NPM, Gi
+      apt:
+        name: 
+          - nodejs
+          - git
+        state: present
+
+    - name: Create parent directory
+      file:
+        path: "/var/www/html"
+        state: directory
+        mode: '0755'
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Clone the backend repo
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_path }}"
+        version: HEAD
+        update: yes
+        force: yes
+      become: yes
+      become_user: ubuntu
+
+    - name: Install NPM dependencies
+      npm:
+        path: "{{ app_path }}"
+        state: present
+      become: yes
+      become_user: ubuntu
+
+    - name: Install pm2 globally
+      npm:
+        name: pm2
+        global: yes
+        state: present
+      become: yes
+      # Note: For global npm installs, it is usually cleaner to run as root 
+      # but you can use become_user if your node setup is user-specific.
+
+    - name: Start the node server
+      shell: "pm2 restart index.js --name backend"
+      args:
+        chdir: "{{ app_path }}"
+      become: yes
+      become_user: ubuntu

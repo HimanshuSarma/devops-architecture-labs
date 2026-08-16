@@ -1,0 +1,12 @@
+---
+ansible_user: ubuntu
+ansible_password: password
+ansible_connection: ssh
+ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+app_port: 8000
+max_connections: 10
+ssl_enabled: false
+env: staging
+
+# FIX: Tells Ansible what password to use when "become: true" is called
+ansible_become_password: password
