@@ -16,6 +16,11 @@
 #### **Task Description**
 Create a script that accepts a file path containing a list of usernames as an argument. The script verifies that the executing user has root or `sudo`/`wheel` privileges, reads the input file line-by-line, and provisions Linux user accounts with `/bin/bash` shells and default home directories.
 
+#### **Key Concepts Demonstrated**
+* EUID and group membership (`sudo`/`wheel`) privilege checking.
+* Line-by-line file reading using `while read -r`.
+* User account creation using `useradd` with home directory generation (`-m`).
+
 ```bash
 #!/bin/bash
 echo "Hello, $1!"
@@ -30,33 +35,38 @@ if [[ $EUID -ne 0 ]]; then
   fi
 fi
 
-FILE_PATH=$1
+FILE_PATH="$1"
 
-if [[ -z $1 ]]; then
+if [[ -z "$1" ]]; then
   echo "No argument provided"
   exit 1
 fi
 
-echo $FILE_PATH
+echo "$FILE_PATH"
 echo 
 
 # Process file and create user accounts
 while read -r username _; do
-  userid=$(id -u$username 2>/dev/null)
+  userid=$(id -u "$username" 2>/dev/null)
 
   if [[ $userid -ge 0 ]]; then
     sudo useradd -m -s /bin/bash "$username"
-    echo $userid
+    echo "$userid"
   fi
 
-done < $FILE_PATH
+done < "$FILE_PATH"
+```
 
-## 🛠️ Scripting Challenges & Solutions
+---
 
 ### Challenge 2: Bulk User Account Deprovisioning
 
 #### **Task Description**
-#### Create a script to clean up user accounts from an input file. The script verifies permissions and checks each account's UID before deletion to ensure only standard, non-system user accounts (UID $\ge$ 1001) are removed along with their home directories (userdel -r).
+Create a script to clean up user accounts from an input file. The script verifies permissions and checks each account's UID before deletion to ensure only standard, non-system user accounts (UID $\ge$ 1001) are removed along with their home directories (`userdel -r`).
+
+#### **Key Concepts Demonstrated**
+* User ID evaluation via `id -u` to safeguard system default accounts (UID < 1000).
+* Recursive user deletion including home directory teardown (`userdel -r`).
 
 ```bash
 #!/bin/bash
@@ -72,46 +82,53 @@ if [[ $EUID -ne 0 ]]; then
   fi
 fi
 
-FILE_PATH=$1
+FILE_PATH="$1"
 
-if [[ -z $1 ]]; then
+if [[ -z "$1" ]]; then
   echo "No argument provided"
   exit 1
 fi
 
-echo $FILE_PATH
+echo "$FILE_PATH"
 echo 
 
 # Process file and remove standard users
 while read -r username _; do
-  userid=$(id -u$username 2>/dev/null)
+  userid=$(id -u "$username" 2>/dev/null)
 
   if [[ $userid -ge 1001 ]]; then
     sudo userdel -r "$username"
-    echo $userid
+    echo "$userid"
   fi
 
-done < $FILE_PATH
+done < "$FILE_PATH"
+```
 
-
-## 🛠️ Scripting Challenges & Solutions
+---
 
 ### Challenge 3: Automated Directory Archiving & Backup
 
 #### **Task Description**
-#### Develop a backup utility that takes a source directory path as an argument (defaulting to $HOME/foldertobackup if unsupplied). The script validates path existence, ensures a destination $HOME/backups directory exists, and creates a timestamped .tar archive of the target folder.
+Develop a backup utility that takes a source directory path as an argument (defaulting to `$HOME/foldertobackup` if unsupplied). The script validates path existence, ensures a destination `$HOME/backups` directory exists, and creates a timestamped `.tar` archive of the target folder.
 
+#### **Key Concepts Demonstrated**
+* Fallback default variable assignment (`${HOME}/foldertobackup`).
+* Target existence verification (`-f`, `-d`).
+* Dynamic timestamp generation using `date +%Y-%m-%d_%H%M`.
+* Archive creation using `tar -cvf`.
+
+```bash
 #!/bin/bash
 echo "Hello, $1!"
 
-FILE_PATH=$1
+FILE_PATH="$1"
 
-if [[ -z $1 ]]; then
+if [[ -z "$1" ]]; then
   echo "No argument provided"
   FILE_PATH="$HOME/foldertobackup"
 fi
 
-echo $FILE_PATH
+echo "$FILE_PATH"
 
 if [[ ! -f "$FILE_PATH" && ! -d "$FILE_PATH" ]]; then
   echo "$FILE_PATH doesn't exist"
@@ -121,56 +138,67 @@ fi
 if [[ -d "$HOME/backups" ]]; then
   echo "Exists"
 else
-  mkdir "$HOME/backups"
+  mkdir -p "$HOME/backups"
   echo "$HOME/backups: created"
 fi
 
-DATETIME="backup_"$(date +%Y-%m-%d_%H%M)
+DATETIME="backup_$(date +%Y-%m-%d_%H%M)"
 
-tar -cvf $HOME/backups/$DATETIME.tar $FILE_PATH
+tar -cvf "$HOME/backups/$DATETIME.tar" "$FILE_PATH"
+```
 
-
-## 🛠️ Scripting Challenges & Solutions
+---
 
 ### Challenge 4: Active Log Search & Cleanup Reporting
 
 #### **Task Description**
-#### Write a script that scans a designated search path (defaulting to $HOME/foldertosearch), strips trailing slashes if present, and searches for non-empty .log files modified within the last 7 days (-mtime -7). The results and metadata are saved to a report file named cleanup_report.txt.
+Write a script that scans a designated search path (defaulting to `$HOME/foldertosearch`), strips trailing slashes if present, and searches for non-empty `.log` files modified within the last 7 days (`-mtime -7`). The results and metadata are saved to a report file named `cleanup_report.txt`.
 
+#### **Key Concepts Demonstrated**
+* String manipulation to strip trailing slashes (`${SEARCHPATH%?}`).
+* Advanced `find` condition filtering (`-name "*.log"`, `-size +1c`, `-mtime -7`).
+* Dynamic report generation via stdout redirection (`>>`).
+
+```bash
 #!/bin/bash
 echo "Hello, $1!"
 
 SEARCHPATH="$1"
 
-if [[ -z $1 ]]; then
+if [[ -z "$1" ]]; then
   echo "No argument provided"
   SEARCHPATH="$HOME/foldertosearch"
 fi
 
 last_char="${SEARCHPATH: -1}"
 
-if [ $last_char == '/' ]; then
+if [ "$last_char" == '/' ]; then
   SEARCHPATH="${SEARCHPATH%?}"
 fi
 
-for file in $(find$SEARCHPATH \( -name "*.log" -size +1c \) -mtime -7); do
+for file in $(find "$SEARCHPATH" \( -name "*.log" -size +1c \) -mtime -7); do
 
-  if [ ! -f "$SEARCHPATH""/cleanup_report.txt" ]; then
-    touch "$SEARCHPATH""/cleanup_report.txt"
+  if [ ! -f "$SEARCHPATH/cleanup_report.txt" ]; then
+    touch "$SEARCHPATH/cleanup_report.txt"
   fi
 
-  echo $(ls -la $file) >> "$SEARCHPATH""/cleanup_report.txt"
+  echo $(ls -la "$file") >> "$SEARCHPATH/cleanup_report.txt"
 done
+```
 
-
-## 🛠️ Scripting Challenges & Solutions
+---
 
 ### Challenge 5: File & Directory Property Inspector
 
 #### **Task Description**
-#### Create a system inspector script that evaluates a target argument. If the target is a single file, it outputs read/write/execute permissions and converts its size to KB. If the target is a directory, it iterates through all contained items and outputs formatted permissions, item size in KB, basename, and full path.
+Create a system inspector script that evaluates a target argument. If the target is a single file, it outputs read/write/execute permissions and converts its size to KB. If the target is a directory, it iterates through all contained items and outputs formatted permissions, item size in KB, basename, and full path.
 
+#### **Key Concepts Demonstrated**
+* File test operators (`-f`, `-d`, `-r`, `-w`, `-x`).
+* Size processing using `awk` math functions (`$5 / 1024`).
+* Directory iteration (`for item in "$1"/*`) and string extraction via `basename`.
 
+```bash
 #!/bin/bash
 echo "Hello, $1!"
 
@@ -179,17 +207,17 @@ if [[ ! -f "$1" && ! -d "$1" ]]; then
   exit 1
 fi
 
-if [[ -f $1 ]]; then
+if [[ -f "$1" ]]; then
   [[ -r "$1" ]] && R="Readable" || R="Not Readable"
   [[ -w "$1" ]] && W="Writable" || W="Not Writable"
   [[ -x "$1" ]] && X="Executable" || X="Not Executable"
 
-  echo $R $W$X
+  echo "$R $W $X"
 
-  SIZE_IN_BYTES=$(ls -la $1 | awk '{print $5 / 1024}')
-  echo $SIZE_IN_BYTES KB
+  SIZE_IN_BYTES=$(ls -la "$1" | awk '{print $5 / 1024}')
+  echo "${SIZE_IN_BYTES} KB"
 
-elif [[ -d $1 ]]; then
+elif [[ -d "$1" ]]; then
   echo "Target: $1 (Directory)"
   echo "--- Contents ---"
 
@@ -205,8 +233,9 @@ elif [[ -d $1 ]]; then
     [[ -w "$item" ]] && W="Writable" || W="Not Writable"
     [[ -x "$item" ]] && X="Executable" || X="Not Executable"
 
-    echo $R $W$X
+    echo "$R $W $X"
 
-    echo "$size KB	$name$item"
+    echo "$size KB | $name | $item"
   done
 fi
+```
