@@ -30,7 +30,7 @@ flowchart TD
     subgraph ControlPlane["Ansible Control Node (Local Host)"]
         AC["ansible.cfg"]
         INV["hosts.ini\n(Inventory)"]
-        GV["group_vars/backend_servers_group1.yaml\n(Variables & Credentials)"]
+        GV["group_vars/\n(Variables & Credentials)"]
         Engine["Ansible Orchestration Engine"]
         
         AC --> Engine
@@ -53,5 +53,5 @@ flowchart TD
     %% SSH Connections
     Engine -->|SSH Auth + Become Pass| C0
     Engine -->|SSH Auth + Become Pass| C1
-    Engine -->|SSH Auth| C2
-    Engine -->|SSH Auth| C3
+    Engine -->|SSH Auth + Become Pass| C2
+    Engine -->|SSH Auth + Become Pass| C3
