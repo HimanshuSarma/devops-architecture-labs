@@ -28,3 +28,48 @@
 ## 🏗️ Implementation Flow & Component Breakdown
 
 ### 1. Configuration & Inventory Structure
+├── ansible.cfg                          # Central Ansible settings (default inventory, SSH key checks disabled)
+├── hosts.ini                            # INI inventory mapping custom ports to container targets
+└── group_vars/
+└── backend_servers_group1.yaml      # Group-level variables, SSH credentials & privilege configs
+
+### 2. File Configurations
+
+#### **`ansible.cfg`**
+Disables host key prompts and sets automatic Python interpreter discovery for seamless local execution:
+```ini
+[defaults]
+inventory = hosts.ini
+host_key_checking = False
+interpreter_python = auto_silent
+
+
+flowchart TD
+    subgraph ControlPlane["Ansible Control Node (Local Host)"]
+        AC["ansible.cfg"]
+        INV["hosts.ini\n(Inventory)"]
+        GV["group_vars/backend_servers_group1.yaml\n(Variables & Credentials)"]
+        Engine["Ansible Orchestration Engine"]
+        
+        AC --> Engine
+        INV --> Engine
+        GV --> Engine
+    end
+
+    subgraph ContainerFleet["Target Container Fleet (Localhost)"]
+        subgraph Group1["backend_servers_group1"]
+            C0["backend-server-0\n(127.0.0.1:2221)"]
+            C1["backend-server-1\n(127.0.0.1:2222)"]
+        end
+
+        subgraph Group2["backend_servers_group2"]
+            C2["backend-server-2\n(127.0.0.1:2223)"]
+            C3["backend-server-3\n(127.0.0.1:2224)"]
+        end
+    end
+
+    %% SSH Connections
+    Engine -->|SSH Auth + Become Pass| C0
+    Engine -->|SSH Auth + Become Pass| C1
+    Engine -->|SSH Auth| C2
+    Engine -->|SSH Auth| C3
