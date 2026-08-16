@@ -25,25 +25,7 @@
 
 ---
 
-## 🏗️ Implementation Flow & Component Breakdown
-
-### 1. Configuration & Inventory Structure
-├── ansible.cfg                          # Central Ansible settings (default inventory, SSH key checks disabled)
-├── hosts.ini                            # INI inventory mapping custom ports to container targets
-└── group_vars/
-└── backend_servers_group1.yaml      # Group-level variables, SSH credentials & privilege configs
-
-### 2. File Configurations
-
-#### **`ansible.cfg`**
-Disables host key prompts and sets automatic Python interpreter discovery for seamless local execution:
-```ini
-[defaults]
-inventory = hosts.ini
-host_key_checking = False
-interpreter_python = auto_silent
-
-
+```mermaid
 flowchart TD
     subgraph ControlPlane["Ansible Control Node (Local Host)"]
         AC["ansible.cfg"]
