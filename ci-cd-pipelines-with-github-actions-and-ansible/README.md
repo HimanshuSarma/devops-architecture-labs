@@ -14,14 +14,14 @@
 ```mermaid
 graph TD
     subgraph GitHub ["GitHub Platform"]
-        GitPush["Git Push<br/>to 'main'"]
+        GitPush["Git Push to 'main'"]
         Secrets["GitHub Actions Secrets<br/>(AWS Credentials & SSH Key)"]
         GHA_Runner["GitHub Actions Runner<br/>(ubuntu-latest)"]
     end
 
     subgraph Runner_Env ["Runner Execution Environment"]
         Cache_Restore["Restore Pip & Ansible<br/>Collections Cache"]
-        AWS_Configure["Authenticate AWS CLI<br/>& SDK (boto3)"]
+        AWS_Configure["Configure AWS Credentials<br/>(aws-actions)"]
         SSH_Setup["Write /tmp/ec2.pem<br/>(chmod 600)"]
         Ansible_Engine["Ansible Execution Engine"]
     end
@@ -35,23 +35,25 @@ graph TD
         end
     end
 
-    %% Workflow Connections
+    %% Pipeline Execution Sequence
     GitPush --> GHA_Runner
-    Secrets -.-> AWS_Configure
-    Secrets -.-> SSH_Setup
-    
     GHA_Runner --> Cache_Restore
     Cache_Restore --> AWS_Configure
     AWS_Configure --> SSH_Setup
     SSH_Setup --> Ansible_Engine
-    
-    Ansible_Engine --> EC2_Plugin
-    EC2_Plugin -- "Query running nodes<br/>(tag:Name = asg-app-node)" --> AWS_Cloud
-    AWS_Cloud -- "Return Public/Private IPs" --> EC2_Plugin
-    EC2_Plugin -- "Populate host group<br/>tag_Name_asg_app_node" --> Ansible_Engine
-    
-    Ansible_Engine -- "SSH (port 22) + sudo" --> Target_EC2_1
-    Ansible_Engine -- "SSH (port 22) + sudo" --> Target_EC2_2
+
+    %% Secrets Injection
+    Secrets -.->|"Inject Keys"| AWS_Configure
+    Secrets -.->|"Inject SSH Key"| SSH_Setup
+
+    %% Dynamic Inventory Discovery Sequence
+    Ansible_Engine -->|"1. Invoke Plugin"| EC2_Plugin
+    EC2_Plugin -->|"2. Query & Return IPs<br/>(tag:Name = asg-app-node)"| Target_EC2_1
+    EC2_Plugin -->|"2. Query & Return IPs<br/>(tag:Name = asg-app-node)"| Target_EC2_2
+
+    %% Playbook Deployment Sequence
+    Ansible_Engine ==>|"3. SSH (port 22) + sudo<br/>(Run Playbook)"| Target_EC2_1
+    Ansible_Engine ==>|"3. SSH (port 22) + sudo<br/>(Run Playbook)"| Target_EC2_2
 ```
 
 ---
